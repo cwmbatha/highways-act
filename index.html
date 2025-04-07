@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Highways Act map</title>
+		<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+		<script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+		<link href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+		<style>
+			body { margin: 0; padding: 0; }
+			#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+		</style>
+	</head>
+	<body>
+		<div id="map"></div>
+		<script>
+			const map = new maplibregl.Map({
+				container: 'map',
+				style: 'https://tiles.openfreemap.org/styles/liberty',
+				projection: 'mercator',
+				zoom: 5.5,
+				center: [-1, 53]
+			});
+			let clickedId = null;
+			
+			map.addControl(new maplibregl.NavigationControl({
+				showZoom: true,
+				showCompass: false
+			}));
+			
+			map.on('load', () => {
+				map.addSource('s31', {
+					type: 'geojson',
+					data: 'data/s31_layer.geojson'
+				});
+				
+				map.addLayer({
+					'id': 's31-layer',
+					'type': 'fill',
+					'source': 's31',
+					'layout': {},
+					'paint': {
+						'fill-color': [
+							'case',
+							['boolean', ['feature-state', 'click'], false],
+							'#4d29aa', '#FF6257'],
+						'fill-opacity': 0.5
+					}
+				});
+			});
+			
+			map.on('click', 's31-layer', (e) => {
+				const property = e.features[0].properties['Property'];
+				const owner = e.features[0].properties['Landowner or Depositor'];
+				const date = e.features[0].properties['Date'];
+				const authority = e.features[0].properties['Local Authority'];
+				const size = e.features[0].properties['Size (acres)'];
+				
+				new maplibregl.Popup()
+					.setLngLat(e.lngLat)
+					.setHTML(
+						"<b>Property: </b>" + property +
+						"<br><b>Landowner or Depositor: </b>" + owner +
+						"<br><b>Size (acres): </b>" + size +
+						"<br><b>Date: </b>" + date +
+						"<br><b>Local Authority: </b>" + authority
+					)
+					.addTo(map);
+				
+				if (e.features.length > 0) {
+					if (clickedId) {
+						map.setFeatureState(
+							{source: 's31', id: clickedId},
+							{click: false}
+						);
+					}
+					clickedId = e.features[0].id;
+					map.setFeatureState(
+						{source: 's31', id: clickedId},
+						{click: true}
+					);
+				}
+			});
+			
+			map.on('mouseenter', 's31-layer', () => {
+				map.getCanvas().style.cursor = 'pointer';
+			});
+
+			map.on('mouseleave', 's31-layer', () => {
+				map.getCanvas().style.cursor = '';
+			});
+		</script>
+	</body>
+</html>
